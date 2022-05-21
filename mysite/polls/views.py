@@ -3,32 +3,35 @@ from django.http import Http404, HttpResponse, HttpResponseRedirect
 from .models import Question,Choice
 from django.template import loader
 from django.urls import reverse
-
+from django.views import generic
+from django.utils import timezone
+from django.contrib.auth.decorators import login_required
 
 # Create your views here.
-def index(request):
-    latest_question_list = Question.objects.order_by("-pub_date")[:5]
-    # raise ValueError(latest_question_list)
-    # template = loader.get_template("polls/index.html")
-    context = {"latest_question_list":latest_question_list,
-                }
-    return render(request,"polls/index.html",context)
+
+class IndexView(generic.ListView):
+    template_name = 'polls/index.html'
+    context_object_name = 'latest_question_list'
+
+    def get_queryset(self):
+        """Return the last five published questions."""
+        return Question.objects.filter(pub_date__lte=timezone.now()).order_by('-pub_date')[:5]
     # return HttpResponse("Hello folks! You are at polls index :)")
 
-def detail(request,question_id):
-    # try:
-    question = get_object_or_404(Question,pk=question_id)
-    # except Question.DoesNotExist:
-        # raise Http404("Question does not exist")
-    
-    return render(request,"polls/detail.html",{"question":question})
 
-    # return HttpResponse(f"You're looking at question {question_id}")
+class DetailView(generic.DetailView):
+    model = Question
+    template_name = 'polls/detail.html'
+    def get_queryset(self):
+        """
+        Excludes any questions that aren't published yet.
+        """
+        return Question.objects.filter(pub_date__lte=timezone.now())
 
-def results(request,question_id):
-    question = get_object_or_404(Question,pk=question_id)
-    return render(request,"polls/results.html",{"question":question})
-    # return HttpResponse(f"You're looking at the results of {question_id}") 
+
+class ResultsView(generic.DetailView):
+    model = Question
+    template_name = 'polls/results.html'
 
 def vote(request,question_id):
     question = get_object_or_404(Question,pk=question_id)
